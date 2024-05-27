@@ -1,224 +1,205 @@
 from pygame import *
 from random import randint
-from time import time as timer #імпортуємо функцію для засікання часу, щоб інтерпретатор не шукав цю функцію в pygame модулі time, даємо їй іншу назву самі
-
-#підвантажуємо окремо функції для роботи зі шрифтом
-
-# шрифти і написи
-font.init()
-font1 = font.Font(None, 80)
-win = font1.render('YOU WIN!', True, (255, 255, 255))
-lose = font1.render('YOU LOSE!', True, (180, 0, 0))
-font2 = font.Font(None, 36)
-
-# фонова музика
+from time import time as timer
 mixer.init()
 mixer.music.load('space.ogg')
 mixer.music.play()
 fire_sound = mixer.Sound('fire.ogg')
- 
-# нам потрібні такі картинки:
-img_back = "galaxy.jpg"  # фон гри
-img_hero = "rocket.png"  # герой
-img_bullet = "bullet.png" # куля
-img_enemy = "ufo.png"  # ворог
-img_ast = "asteroid.png" # астероїд
 
-score = 0  # збито кораблів
-goal = 10 # стільки кораблів потрібно збити для перемоги
-lost = 0  # пропущено кораблів
-max_lost = 3 # програли, якщо пропустили стільки
-life = 3  # очки життя
+img_back = "galaxy.jpg"
+img_hero = "rocket.png"
+img_bullet = "bullet.png"
+img_enemy = "ufo.png"
+img_asteroid = "asteroid.png"
 
-# клас-батько для інших спрайтів
+lost = 0
+score = 0
+life = 3
+speed = 1
+
+font.init()
+font1 = font.SysFont("Arial", 80)
+font2 = font.SysFont("Arial", 36)
+win = font1.render("YOU WIN", True, (255, 255, 255))
+lose = font1.render("YOU LOSE", True, (255, 255, 255))
+
 class GameSprite(sprite.Sprite):
-    # конструктор класу
-    def __init__(self, player_image, player_x, player_y, size_x, size_y, player_speed):
-        # викликаємо конструктор класу (Sprite):
+    def __init__(self, player_image, 
+                player_x, player_y,
+                size_x, size_y,
+                player_speed):
         sprite.Sprite.__init__(self)
- 
-        # кожен спрайт повинен зберігати властивість image - зображення
         self.image = transform.scale(
-            image.load(player_image), (size_x, size_y))
+            image.load(player_image), (
+                size_x, size_y
+            ))
         self.speed = player_speed
- 
-        # кожен спрайт повинен зберігати властивість rect - прямокутник, в який він вписаний
         self.rect = self.image.get_rect()
         self.rect.x = player_x
         self.rect.y = player_y
- 
-    # метод, що малює героя у вікні
     def reset(self):
-        window.blit(self.image, (self.rect.x, self.rect.y))
- 
-# клас головного гравця
+        window.blit(self.image, (
+            self.rect.x, self.rect.y
+        ))
+
 class Player(GameSprite):
-    # метод для керування спрайтом стрілками клавіатури
     def update(self):
         keys = key.get_pressed()
-        if keys[K_LEFT] and self.rect.x > 5:
+        if keys[K_a] and self.rect.x > 5:
             self.rect.x -= self.speed
-        if keys[K_RIGHT] and self.rect.x < win_width - 80:
+        if keys[K_d] and self.rect.x < win_width - 80:
             self.rect.x += self.speed
- 
-    # метод "постріл" (використовуємо місце гравця, щоб створити там кулю)
+        if keys[K_w] and self.rect.x > 5:
+            self.rect.y -= self.speed
+        if keys[K_s] and self.rect.x > 5:
+            self.rect.y += self.speed
     def fire(self):
         bullet = Bullet(img_bullet, self.rect.centerx, self.rect.top, 15, 20, -15)
         bullets.add(bullet)
- 
-# клас спрайта-ворога
+
+
 class Enemy(GameSprite):
-    # рух ворога
-    def update(self):
-        self.rect.y += self.speed
-        global lost
-        # зникає, якщо дійде до краю екрана
-        if self.rect.y > win_height:
-            self.rect.x = randint(80, win_width - 80)
-            self.rect.y = 0
-            lost = lost + 1
+  def update(self):
+    self.rect.y += speed
+    global lost
+    if self.rect.y > win_height:
+      self.rect.y = 0
+      self.rect.x = randint(80, win_width - 80)
 
-# клас спрайта-кулі   
 class Bullet(GameSprite):
-    # рух ворога
-    def update(self):
-        self.rect.y += self.speed
-        # зникає, якщо дійде до краю екрана
-        if self.rect.y < 0:
-            self.kill()
+  def update(self):
+    self.rect.y += self.speed
+    if self.rect.y < 0:
+      self.kill()
+class Enemy_2(GameSprite):
+  def update(self):
+    self.rect.y += self.speed
+    global lost
+    if self.rect.y > win_height:
+      self.rect.y = 0
+      self.rect.x = randint(80, win_width - 80)
 
-# створюємо віконце
+
 win_width = 700
 win_height = 500
 display.set_caption("Shooter")
 window = display.set_mode((win_width, win_height))
-background = transform.scale(image.load(img_back), (win_width, win_height))
- 
-# створюємо спрайти
-ship = Player(img_hero, 5, win_height - 100, 80, 100, 10)
+background = transform.scale(
+    image.load(img_back), (
+        win_width, win_height
+    )
+)
 
-# створення групи спрайтів-ворогів
+ship = Player(img_hero, 5, win_height - 100, 150, 150, 10)
 monsters = sprite.Group()
-for i in range(1, 6):
-    monster = Enemy(img_enemy, randint(
-        80, win_width - 80), -40, 80, 50, randint(1, 5))
-    monsters.add(monster)
+for i in range(1, 7):
+  monster = Enemy(img_enemy, randint(80, win_width - 80), -40, 80, 50, randint(1, 5))
+  monsters.add(monster)
 
-# створення групи спрайтів-астероїдів
 asteroids = sprite.Group()
-for i in range(1, 3):
-    asteroid = Enemy(img_ast, randint(30, win_width - 30), -40, 80, 50, randint(1, 7))
+for i in range(1, 4):
+    asteroid = Enemy_2(img_asteroid, randint(30, win_width - 30), -40, 150, 100, randint(1, 7))
     asteroids.add(asteroid)
 
 bullets = sprite.Group()
 
-# змінна "гра закінчилася": як тільки вона стає True, в основному циклі перестають працювати спрайти
 finish = False
-# Основний цикл гри:
-run = True  # прапорець скидається кнопкою закриття вікна
+game = True
 
-rel_time = False  # прапор, що відповідає за перезаряджання
+rel_time = False
+num_fire = 0
 
-num_fire = 0  # змінна для підрахунку пострілів    
-
-while run:
-    # подія натискання на кнопку Закрити
+while game:
     for e in event.get():
         if e.type == QUIT:
-            run = False
-        #подія натискання на пробіл - спрайт стріляє
+            game = False
         elif e.type == KEYDOWN:
             if e.key == K_SPACE:
-                #перевіряємо, скільки пострілів зроблено і чи не відбувається перезаряджання
-                if num_fire < 5 and rel_time == False:
-                    num_fire = num_fire + 1
+                if num_fire < 5 and rel_time is False:
+                    num_fire += 1
                     fire_sound.play()
                     ship.fire()
-                    
-                if num_fire >= 5 and rel_time == False : #якщо гравець зробив 5 пострілів
-                    last_time = timer() #засікаємо час, коли це сталося
-                    rel_time = True #ставимо прапор перезарядки
-
-    # сама гра: дії спрайтів, перевірка правил гри, перемальовка
+ 
+                if num_fire >= 5 and rel_time is False:
+                    last_time = timer()
+                    rel_time = True
+ 
     if not finish:
-        # оновлюємо фон
-        window.blit(background, (0, 0))
+        score = score + 1
+        if score == 500:
+            speed = speed + speed
+            function = False
+        if score == 1000:
+            speed = speed + speed
+            function = False
+        if score == 2000:
+            speed = speed + speed
+            function = False
+        if score == 3000:
+            speed = speed + speed
+            function = False
+        if score == 4000:
+            speed = speed + speed
+            function = False
+        if score == 5000:
+            speed = speed + speed
+            function = False
 
-        # рухи спрайтів
+        window.blit(background, (0, 0))
+ 
+        text = font2.render("Рахунок: " + str(score), 1, (255, 255, 255))
+        window.blit(text, (10, 20))
+ 
         ship.update()
         monsters.update()
         asteroids.update()
         bullets.update()
  
-        #оновлюємо їх у новому місці при кожній ітерації циклу
         ship.reset()
         monsters.draw(window)
         asteroids.draw(window)
         bullets.draw(window)
-
-        # перезарядка
-        if rel_time == True:
-            now_time = timer() # зчитуємо час
-         
-            if now_time - last_time < 3: #поки не минуло 3 секунди виводимо інформацію про перезарядку
-                reload = font2.render('Wait, reload...', 1, (150, 0, 0))
+ 
+        if rel_time is True:
+            now_time = timer()
+            if now_time - last_time < 2:
+                reload = font2.render("Wait... reloading...", 1, (150, 0, 0))
                 window.blit(reload, (260, 460))
             else:
-                num_fire = 0     #обнулюємо лічильник куль
-                rel_time = False #скидаємо прапор перезарядки
-
-         #перевірка зіткнення кулі та монстрів (і монстр, і куля при дотику зникають)
+                num_fire = 0
+                rel_time = False
+ 
         collides = sprite.groupcollide(monsters, bullets, True, True)
         for c in collides:
-            #Цей цикл повториться стільки разів, скільки монстрів підбито
-            score = score + 1
-            monster = Enemy(img_enemy, randint(80, win_width - 80), -40, 80, 50, randint(1, 5))
+            score += 1
+            monster = Enemy(img_enemy, randint(
+                80, win_width - 80), -40, 80, 50, randint(1, 5))
             monsters.add(monster)
 
-        '''
-        # можливий програш: пропустили занадто багато чи герой зіткнувся з ворогом чи астероїдом
-        if sprite.spritecollide(ship, monsters, False) or sprite.spritecollide(ship, asteroids, False) or lost >= max_lost:
-            finish = True # програли, ставимо тло і більше не керуємо спрайтами.
-            window.blit(lose, (200, 200))
-        '''
-        # якщо спрайт торкнувся ворога зменшує життя
+        collides = sprite.groupcollide(asteroids, bullets, False, True)
+
         if sprite.spritecollide(ship, monsters, False) or sprite.spritecollide(ship, asteroids, False):
             sprite.spritecollide(ship, monsters, True) 
             sprite.spritecollide(ship, asteroids, True)
             life = life -1
-
-        #програш
-        if life == 0 or lost >= max_lost:
-            finish = True # проиграли, ставим фон и больше не управляем спрайтами.
-            window.blit(lose, (200, 200))
-
-        # перевірка виграшу: скільки очок набрали?
-        if score >= goal:
-            finish = True
-            window.blit(win, (200, 200))
-
-        # пишемо текст на екрані
-        text = font2.render("Рахунок: " + str(score), 1, (255, 255, 255))
-        window.blit(text, (10, 20))
  
-        text_lose = font2.render("Пропущено: " + str(lost), 1, (255, 255, 255))
-        window.blit(text_lose, (10, 50))
-
-        # задаємо різний колір залежно від кількості життів
+ 
+        if life == 0:
+            finish = True
+            window.blit(lose, (200, 200))
+ 
         if life == 3:
             life_color = (0, 150, 0)
         if life == 2:
             life_color = (150, 150, 0)
         if life == 1:
             life_color = (150, 0, 0)
-
-        
+ 
         text_life = font1.render(str(life), 1, life_color)
         window.blit(text_life, (650, 10))
-
+ 
         display.update()
-
-    #бонус: автоматичний перезапуск гри
+ 
     else:
         finish = False
         score = 0
@@ -230,16 +211,15 @@ while run:
         for m in monsters:
             m.kill()
         for a in asteroids:
-            a.kill()    
-      
-
+            a.kill()
+ 
         time.delay(3000)
         for i in range(1, 6):
-            monster = Enemy(img_enemy, randint(80, win_width - 80), -40, 80, 50, randint(1, 5))
+            monster = Enemy(img_enemy, randint(
+                80, win_width - 80), -40, 80, 50, randint(1, 5))
             monsters.add(monster)
         for i in range(1, 3):
-            asteroid = Enemy(img_ast, randint(30, win_width - 30), -40, 80, 50, randint(1, 7))
-            asteroids.add(asteroid)    
-
-    # цикл спрацьовує кожні 0.05 секунд
+            asteroid = Enemy(img_asteroid, randint(
+                30, win_width - 30), -40, 80, 50, randint(1, 7))
+            asteroids.add(asteroid)
     time.delay(50)
